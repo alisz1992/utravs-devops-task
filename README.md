@@ -60,6 +60,12 @@ docs/               architecture, reliability report, trade-offs, runbooks, evid
 ```
 
 ---
+> [!NOTE]
+> **Infrastructure Limitation**
+>
+> Due to limitations of the VPS provider regarding Floating IP support, the load balancers cannot be configured with a dedicated Virtual IP (VIP) in the current implementation.
+>
+> However, Virtual IPs have been considered in the architecture and can be implemented in an environment where Floating IPs or equivalent network capabilities are available.
 
 ## 4. Setup Steps (from a clean environment)
 
