@@ -1,0 +1,72 @@
+---
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Docker repository GPG key (source of containerd.io)
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    force: false
+
+- name: Add the official Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    filename: docker
+    state: present
+
+- name: Install containerd with the pinned version
+  ansible.builtin.apt:
+    name: "containerd.io={{ containerd_version }}"
+    state: present
+    update_cache: true
+  register: _ctrd_pin
+  failed_when: false
+
+- name: Install latest containerd (only when the pinned version is missing)
+  when: _ctrd_pin.msg | default('') is search('No candidate|Unable to locate|cannot be found|Failed to install|No package matches|was not found')
+  ansible.builtin.apt:
+    name: containerd.io
+    state: latest
+    update_cache: true
+
+- name: Warn when the pinned containerd version was substituted
+  when: _ctrd_pin.msg | default('') is search('No candidate|Unable to locate|cannot be found|Failed to install|No package matches|was not found')
+  ansible.builtin.debug:
+    msg: "WARNING: pinned version {{ containerd_version }} not found - latest version installed. Please update VERSIONS.md."
+
+- name: Ensure /etc/containerd exists (the package may not create it)
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+
+- name: Configure containerd with SystemdCgroup=true
+  ansible.builtin.template:
+    src: config.toml.j2
+    dest: /etc/containerd/config.toml
+    mode: "0644"
+    backup: true
+    validate: /usr/bin/containerd --config %s config dump > /dev/null
+  notify: restart containerd
+
+- name: Configure crictl
+  ansible.builtin.copy:
+    dest: /etc/crictl.yaml
+    mode: "0644"
+    content: |
+      runtime-endpoint: unix:///run/containerd/containerd.sock
+      image-endpoint: unix:///run/containerd/containerd.sock
+      timeout: 10
+      debug: false
+
+- name: Enable and start containerd
+  ansible.builtin.systemd:
+    name: containerd
+    state: started
+    enabled: true
+    daemon_reload: true

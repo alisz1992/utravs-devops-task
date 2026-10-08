@@ -1,0 +1,172 @@
+---
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Kubernetes repository GPG key
+  ansible.builtin.get_url:
+    url: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_minor }}/deb/Release.key"
+    dest: /tmp/k8s-Release.key
+    mode: "0644"
+
+- name: Convert key to dearmored format
+  ansible.builtin.command:
+    cmd: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/k8s-Release.key
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+- name: Add the official Kubernetes apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ k8s_minor }}/deb/ /"
+    filename: kubernetes
+    state: present
+
+- name: Install kubeadm/kubelet/kubectl (pinned version)
+  ansible.builtin.apt:
+    name:
+      - "kubeadm={{ k8s_version }}"
+      - "kubelet={{ k8s_version }}"
+      - "kubectl={{ k8s_version }}"
+    state: present
+    update_cache: true
+  register: _k8s_pin
+  failed_when: false
+
+- name: Install latest version (only when the pinned version is missing)
+  when: _k8s_pin.msg | default('') is search('No candidate|Unable to locate|Failed to install|No package matches|was not found')
+  ansible.builtin.apt:
+    name: [kubeadm, kubelet, kubectl]
+    state: latest
+    update_cache: true
+
+- name: Warn when the pinned Kubernetes version was substituted
+  when: _k8s_pin.msg | default('') is search('No candidate|Unable to locate|Failed to install|No package matches|was not found')
+  ansible.builtin.debug:
+    msg: "WARNING: pinned version {{ k8s_version }} not found - latest installed. Please update VERSIONS.md."
+
+- name: Hold package versions (prevent unintended upgrades)
+  ansible.builtin.command: apt-mark hold kubeadm kubelet kubectl
+  changed_when: false
+
+- name: Enable kubelet (crash-loop before init is expected)
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: true
+    daemon_reload: true
+
+- name: Ensure /etc/kubernetes exists (removed by kubeadm reset)
+  ansible.builtin.file:
+    path: /etc/kubernetes
+    state: directory
+    mode: "0755"
+
+- name: Render kubeadm init config (only on {{ groups['control_plane'][0] }})
+  ansible.builtin.template:
+    src: kubeadm-init.yaml.j2
+    dest: "{{ kubeadm_config_path }}"
+    mode: "0600"
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: kubeadm init (stacked etcd on the control-plane nodes)
+  ansible.builtin.command:
+    cmd: "kubeadm init --config {{ kubeadm_config_path }} --upload-certs"
+    creates: "{{ kubeconfig_admin }}"
+  when: inventory_hostname == groups['control_plane'][0]
+
+- name: Prepare the admin kubeconfig
+  when: inventory_hostname == groups['control_plane'][0]
+  block:
+    - name: Create .kube directory
+      ansible.builtin.file:
+        path: /root/.kube
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Copy admin.conf to the admin location
+      ansible.builtin.copy:
+        src: "{{ kubeconfig_admin }}"
+        dest: /root/.kube/config
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0600"
+
+- name: Build the control-plane join command (token + certificate-key)
+  ansible.builtin.shell: |
+    set -o pipefail
+    CERT_KEY=$(kubeadm init phase upload-certs --upload-certs | tail -n1)
+    kubeadm token create --print-join-command --certificate-key "$CERT_KEY"
+  args:
+    executable: /bin/bash
+  register: _cp_join
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+  changed_when: false
+
+- name: Join cp2 and cp3 as control-plane nodes
+  ansible.builtin.shell: "{{ _cp_join.stdout }} --control-plane"
+  args:
+    creates: /etc/kubernetes/kubelet.conf
+  loop: "{{ groups['control_plane'][1:] }}"
+  delegate_to: "{{ item }}"
+  run_once: true
+
+- name: Check whether Helm is installed
+  ansible.builtin.command: helm version --short
+  register: _helm_ver
+  changed_when: false
+  failed_when: false
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+
+- name: Download the Helm installer script
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: "{{ helm_script }}"
+    mode: "0755"
+  when: _helm_ver.stdout | default('') != 'v' ~ helm_version
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+
+- name: Install Helm (pinned version)
+  ansible.builtin.command:
+    cmd: "{{ helm_script }} --version v{{ helm_version }}"
+  when: _helm_ver.stdout | default('') != 'v' ~ helm_version
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+  changed_when: true
+
+- name: Add the Cilium Helm repository
+  ansible.builtin.command:
+    cmd: helm repo add cilium {{ cilium_chart_repo }}
+    creates: /root/.config/helm/repositories.yaml
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+
+- name: Update Helm repositories
+  ansible.builtin.command: helm repo update
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+  changed_when: false
+
+- name: Install the Cilium CNI (pinned version + Hubble)
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade --install cilium cilium/cilium
+      --version {{ cilium_version }}
+      --namespace kube-system
+      --set ipam.mode=kubernetes
+      --set kubeProxyReplacement=false
+      --set k8sServiceHost={{ control_plane_endpoint.split(':')[0] }}
+      --set k8sServicePort={{ control_plane_endpoint.split(':')[1] }}
+      --set hubble.enabled=true
+      --set hubble.relay.enabled=true
+      --set hubble.ui.enabled=true
+  register: _cilium
+  run_once: true
+  delegate_to: "{{ groups['control_plane'][0] }}"
+  changed_when: "'installed' in _cilium.stdout or 'upgraded' in _cilium.stdout"

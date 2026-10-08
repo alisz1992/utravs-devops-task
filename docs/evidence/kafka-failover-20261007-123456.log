@@ -1,0 +1,52 @@
+=== Kafka leader failover test - 2026-10-07T12:34:56Z ===
+--- BEFORE
+NAME                                            READY   STATUS    RESTARTS       AGE   IP             NODE   NOMINATED NODE   READINESS GATES
+kafka-exporter-847c7fb884-whfts                 2/2     Running   17 (15h ago)   16h   10.244.5.36    w1     <none>           <none>
+utravs-kafka-dual-role-pool-0                   2/2     Running   0              29m   10.244.2.115   cp3    <none>           <none>
+utravs-kafka-dual-role-pool-1                   2/2     Running   0              14h   10.244.5.165   w1     <none>           <none>
+utravs-kafka-dual-role-pool-2                   2/2     Running   0              32m   10.244.4.112   w2     <none>           <none>
+utravs-kafka-entity-operator-54575c4fd5-swjhr   3/3     Running   0              14h   10.244.4.107   w2     <none>           <none>
+    current leader pod: pod/utravs-kafka-dual-role-pool-2
+    brokers ready now: 3, consumer-group lag now: 0
+--- stopping the leader broker
+pod "utravs-kafka-dual-role-pool-2" deleted
+    deleted at 2026-10-07T12:35:11Z
+--- waiting for a new leader and broker recovery
+    t=20s leader=pod/utravs-kafka-dual-role-pool-0 brokers_ready=2 lag=0
+    t=41s leader=pod/utravs-kafka-dual-role-pool-0 brokers_ready=2 lag=0
+    t=63s leader=pod/utravs-kafka-dual-role-pool-0 brokers_ready=3 lag=0
+    NEW LEADER ELECTED: leader change observed 20s after the kill
+    ALL 3 BROKERS READY again after 63s
+--- AFTER: consumer lag must stay bounded (processing continues)
+    consumer-group lag after failover: 0
+NAME                                            READY   STATUS    RESTARTS       AGE   IP             NODE   NOMINATED NODE   READINESS GATES
+kafka-exporter-847c7fb884-whfts                 2/2     Running   17 (15h ago)   16h   10.244.5.36    w1     <none>           <none>
+utravs-kafka-dual-role-pool-0                   2/2     Running   0              31m   10.244.2.115   cp3    <none>           <none>
+utravs-kafka-dual-role-pool-1                   2/2     Running   0              14h   10.244.5.165   w1     <none>           <none>
+utravs-kafka-dual-role-pool-2                   2/2     Running   0              79s   10.244.4.27    w2     <none>           <none>
+utravs-kafka-entity-operator-54575c4fd5-swjhr   3/3     Running   0              14h   10.244.4.107   w2     <none>           <none>
+--- consumer group detail (offsets + lag per partition)
+
+Error: Consumer group 'orders-consumers' does not exist.
+--- producer/consumer application logs (proof of continued processing)
+{"ts":"2026-10-07 12:36:50,179","level":"INFO","service":"producer","trace_id":"14ea06175dfaf25e4a394cd8e9656910","span_id":"f49b9ebb4489efe2","msg":"produced event id=259567"}
+{"ts":"2026-10-07 12:36:50,239","level":"INFO","service":"producer","trace_id":"abbfcf9c9c33ca7c42401a5632868cbf","span_id":"d7dfc9220b919fb1","msg":"message delivered topic=orders partition=1 offset=177718"}
+{"ts":"2026-10-07 12:36:50,239","level":"INFO","service":"producer","trace_id":"abbfcf9c9c33ca7c42401a5632868cbf","span_id":"d7dfc9220b919fb1","msg":"produced event id=259568"}
+{"ts":"2026-10-07 12:36:50,308","level":"INFO","service":"producer","trace_id":"3052bc6ecd62e999b4db23e9ff9c0c4e","span_id":"aa970c4310eada01","msg":"message delivered topic=orders partition=2 offset=355438"}
+{"ts":"2026-10-07 12:36:50,308","level":"INFO","service":"producer","trace_id":"3052bc6ecd62e999b4db23e9ff9c0c4e","span_id":"aa970c4310eada01","msg":"produced event id=259569"}
+{"ts":"2026-10-07 12:36:50,239","level":"INFO","service":"producer","trace_id":"fdb1c5d3aec3733faf558d5875933ed1","span_id":"b80d3d17a6f22876","msg":"produced event id=254977"}
+{"ts":"2026-10-07 12:36:50,307","level":"INFO","service":"producer","trace_id":"291c74e809f53bc9cc53413848d27117","span_id":"682f64986b368243","msg":"message delivered topic=orders partition=1 offset=177719"}
+{"ts":"2026-10-07 12:36:50,308","level":"INFO","service":"producer","trace_id":"291c74e809f53bc9cc53413848d27117","span_id":"682f64986b368243","msg":"produced event id=254978"}
+{"ts":"2026-10-07 12:36:50,377","level":"INFO","service":"producer","trace_id":"c161d83adbc725df5b628a924a456d7b","span_id":"d0c498f717d28863","msg":"message delivered topic=orders partition=2 offset=355439"}
+{"ts":"2026-10-07 12:36:50,378","level":"INFO","service":"producer","trace_id":"c161d83adbc725df5b628a924a456d7b","span_id":"d0c498f717d28863","msg":"produced event id=254979"}
+{"ts":"2026-10-07 12:36:50,398","level":"INFO","service":"consumer","trace_id":"8ffabd9cac6481266e329891c5b85929","span_id":"6d2b413cb5248707","msg":"processed event id=259570 item=sku-70"}
+{"ts":"2026-10-07 12:36:50,420","level":"INFO","service":"consumer","trace_id":"8ffabd9cac6481266e329891c5b85929","span_id":"6d2b413cb5248707","msg":"offset committed topic=orders partition=2 offset=355440"}
+{"ts":"2026-10-07 12:36:50,454","level":"INFO","service":"consumer","trace_id":"cbefb906380d5ec41d97002dd29d83fb","span_id":"8afb8a90b2bd95e8","msg":"duplicate message id=254980 ignored (idempotent)"}
+{"ts":"2026-10-07 12:36:50,470","level":"INFO","service":"consumer","trace_id":"cbefb906380d5ec41d97002dd29d83fb","span_id":"8afb8a90b2bd95e8","msg":"offset committed topic=orders partition=2 offset=355441"}
+{"ts":"2026-10-07 12:36:50,610","level":"INFO","service":"consumer","trace_id":"433eb7538653078460bdac3ba5d4fcee","span_id":"447f561484b165e0","msg":"processed event id=259572 item=sku-72"}
+{"ts":"2026-10-07 12:36:50,309","level":"INFO","service":"consumer","trace_id":"291c74e809f53bc9cc53413848d27117","span_id":"c60d787230acfcec","msg":"duplicate message id=254978 ignored (idempotent)"}
+{"ts":"2026-10-07 12:36:50,326","level":"INFO","service":"consumer","trace_id":"291c74e809f53bc9cc53413848d27117","span_id":"c60d787230acfcec","msg":"offset committed topic=orders partition=1 offset=177719"}
+{"ts":"2026-10-07 12:36:50,454","level":"INFO","service":"consumer","trace_id":"937395da4fa5a9ab343b6ca2f2788b76","span_id":"43a4fb5df7b0e34d","msg":"processed event id=259571 item=sku-71"}
+{"ts":"2026-10-07 12:36:50,467","level":"INFO","service":"consumer","trace_id":"937395da4fa5a9ab343b6ca2f2788b76","span_id":"43a4fb5df7b0e34d","msg":"offset committed topic=orders partition=1 offset=177720"}
+{"ts":"2026-10-07 12:36:50,616","level":"INFO","service":"consumer","trace_id":"c9bacbb599a7153c11276ad23102ca80","span_id":"0947a370a157193e","msg":"duplicate message id=254981 ignored (idempotent)"}
+=== test finished - evidence: /root/utravs-failover/docs/evidence/kafka-failover-20261007-123456.log ===

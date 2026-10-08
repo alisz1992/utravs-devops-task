@@ -1,0 +1,36 @@
+=== kube-apiserver failover test - 2026-10-07T10:19:23Z ===
+VIP=api.utravs.local  master=95.182.116.206  cp=104.253.79.218
+--- collecting BEFORE state
+NAME   STATUS   ROLES           AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
+cp1NAME   STATUS   ROLES           AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
+cp1    Ready    control-plane   28h   v1.31.4   217.60.63.89     <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic       Ready    control-plane   28h   v1.31.4   217.60.63.89     <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+containerd://1.7.27
+cp2cp2        Ready    Ready    control-plane   control-plane   28h   v1.31.4   104.253.79.218   <none>        28h   v1.31.4   104.253.79.218   <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+cp3Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+cp3    Ready    control-plane   28h    Ready    control-plane   28h   v1.31.4   v1.31.4   104.252.89.101      104.252.89.101   <none>        <none>        Ubuntu 22.04.4 LTS   5.15.0-112-genericUbuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27   containerd://1.7.27
+w1     
+w1     Ready    Ready    <none>          <none>          28h   28h   v1.31.4   31.56.146.85v1.31.4   31.56.146.85     <none>     <none>        Ubuntu 22.04.4 LTS           Ubuntu 22.04.4 LTS   5.15.0-112-generic   5.15.0-112-generic   containerd://2.3.6
+w2containerd://2.3.6
+w2     Ready     Ready    <none>            <none>          28h  28h   v1.31.4   95.182.88.89     <none>           v1.31.4   95.182.88.89     <none>        Ubuntu 22.04.4 LTS   5.15.0-112-genericUbuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+   containerd://1.7.27
+--- SCENARIO A: stopping keepalived+haproxy on API LB MASTER 95.182.116.206
+    stopped at 2026-10-07T10:19:35Z - VIP should move to the BACKUP node
+--- AFTER A
+    kubectl through VIP: OK
+longest outage: 0.0 s
+    restarting services (recovery)
+--- SCENARIO B: stopping kubelet on Control Plane 104.253.79.218
+2ddba6d39ab56f095dd9ad4892dec9e970365295dbaa6f487fda78091748946c
+--- AFTER B
+NAME   STATUS   ROLES           AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
+cp2    Ready    control-plane   28h   v1.31.4   104.253.79.218   <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+ok    API still healthy through VIP: OK
+longest outage: 2.5 s
+--- recovery: restarting kubelet on 104.253.79.218
+NAME   STATUS   ROLES           AGE   VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
+cp1    Ready    control-plane   28h   v1.31.4   217.60.63.89     <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+cp2    Ready    control-plane   28h   v1.31.4   104.253.79.218   <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+cp3    Ready    control-plane   28h   v1.31.4   104.252.89.101   <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+w1     Ready    <none>          28h   v1.31.4   31.56.146.85     <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://2.3.6
+w2     Ready    <none>          28h   v1.31.4   95.182.88.89     <none>        Ubuntu 22.04.4 LTS   5.15.0-112-generic   containerd://1.7.27
+=== test finished - evidence: /root/utravs-failover/docs/evidence/api-failover-20261007-101923.log and /root/utravs-failover/docs/evidence/api-failover-20261007-101923.log.probes ===

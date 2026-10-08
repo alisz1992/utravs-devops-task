@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: consumer
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: utravs
+  sources:
+    - repoURL: git@github.com:alisz1992/utravs-devops-task.git
+      targetRevision: main
+      path: charts/consumer
+      helm:
+        valueFiles:
+          - $values/gitops/environments/prod/consumer-values.yaml
+    - repoURL: git@github.com:alisz1992/utravs-devops-task.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

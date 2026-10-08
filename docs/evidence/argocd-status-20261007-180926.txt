@@ -1,0 +1,15 @@
+NAME               SYNC STATUS   HEALTH STATUS
+consumer           Synced        Healthy
+ingress-nginx      Synced        Healthy
+istio              OutOfSync     Healthy
+kafka              Synced        Healthy
+mesh-config        Synced        Healthy
+monitoring         Synced        Healthy
+monitoring-crds    Synced        Healthy
+platform-alerts    OutOfSync     Healthy
+producer           Synced        Healthy
+root-app           Synced        Healthy
+storage            Synced        Healthy
+strimzi-operator   Synced        Progressing
+tracing            Synced        Progressing
+vault              OutOfSync     Healthy

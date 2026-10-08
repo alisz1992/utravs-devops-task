@@ -1,0 +1,27 @@
+=== Vault failover test - 2026-10-07T11:40:00Z ===
+--- BEFORE
+    active node: vault-0
+  "sealed": false,
+  "n": 5,
+  "sealed": false,
+  "n": 5,
+  "sealed": false,
+  "n": 5,
+    secret read BEFORE: OK
+--- stepping down active node vault-0
+Success! Stepped down: http://127.0.0.1:8200
+    step-down issued at 2026-10-07T11:40:06Z
+--- waiting for a new active node + continuous secret availability
+    t=9s active=vault-2 secret_read=OK
+    FAILOVER COMPLETE after 9s
+--- AFTER: all nodes unsealed, no sealed member
+    vault-0 sealed=false
+    vault-1 sealed=false
+    vault-2 sealed=false
+--- application pods still healthy (no restart caused by the failover)
+NAME                        READY   STATUS    RESTARTS   AGE
+consumer-6bfc96f5d-442w7    2/2     Running   0          4h17m
+consumer-6bfc96f5d-vbfnt    2/2     Running   0          4h18m
+producer-5657464467-4kzv4   2/2     Running   0          4h17m
+producer-5657464467-9mn7v   2/2     Running   0          4h18m
+=== test finished - evidence: /root/utravs-failover/docs/evidence/vault-failover-20261007-114000.log ===

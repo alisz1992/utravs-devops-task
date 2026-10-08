@@ -1,0 +1,12 @@
+127.0.0.1   localhost
+::1         localhost ip6-localhost ip6-loopback
+ff02::1     ip6-allnodes
+ff02::2     ip6-allrouters
+
+{% for h in groups['all'] | sort %}
+{{ hostvars[h].ansible_host | default('CHANGE_ME') }}   {{ h }}
+{% endfor %}
+
+{% for h in groups['lb_api'] | sort %}
+{{ hostvars[h].ansible_host }}   {{ api_endpoint_name }}
+{% endfor %}

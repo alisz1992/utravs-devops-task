@@ -1,0 +1,38 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/alisz1992/consumer
+  tag: "1.0.3"
+  pullPolicy: IfNotPresent
+
+kafka:
+  bootstrap: utravs-kafka-kafka-bootstrap.kafka:9092
+  topic: orders
+  consumerGroup: orders-consumers-dev
+  autoOffsetReset: earliest
+
+agentInject:
+  enabled: true
+  annotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/agent-init-first: "true"
+    vault.hashicorp.com/role: "consumer-dev"
+    vault.hashicorp.com/agent-inject-secret-kafka-creds: "kv/data/consumer-dev"
+    vault.hashicorp.com/agent-inject-template-kafka-creds: |
+      {{- with secret "kv/data/consumer-dev" -}}
+      CONSUMER_TOKEN={{ .Data.data.token }}
+      {{- end }}
+
+ingress:
+  enabled: true
+  host: consumer-dev.utravs.nip.io
+  path: /
+  tls: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 250m
+    memory: 192Mi

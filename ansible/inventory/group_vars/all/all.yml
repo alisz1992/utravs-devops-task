@@ -1,0 +1,37 @@
+cluster_name: utravs-event-cluster
+
+k8s_version: "1.31.4-1.1"
+k8s_version_full: "1.31.4"
+k8s_minor: "1.31"
+helm_version: "3.16.4"
+containerd_version: "1.7.27-1"
+cilium_version: "v1.16.6"
+
+pod_network_cidr: "10.244.0.0/16"
+service_cidr: "10.96.0.0/12"
+cluster_domain: "cluster.local"
+vrrp_interface: "eth0"
+
+api_vip: "95.182.116.250"
+api_vip_port: 6443
+api_endpoint_name: "api.utravs.local"
+apiserver_port: 6443
+control_plane_endpoint: "{{ api_endpoint_name }}:{{ api_vip_port }}"
+api_check_interval: 2
+api_check_rise: 2
+api_check_fall: 3
+
+ingress_vip: "95.182.87.250"
+ingress_http_port: 80
+ingress_https_port: 443
+ingress_backend_port_http: 30080
+ingress_backend_port_https: 30443
+ingress_health_path: "/healthz"
+ingress_check_interval: 2
+
+keepalived_router_id_api: 51
+keepalived_router_id_ingress: 52
+keepalived_priority_master: 150
+keepalived_priority_backup: 100
+
+node_swap_expected: false

@@ -1,0 +1,12 @@
+---
+
+lb_haproxy_packages:
+  - haproxy
+  - keepalived
+
+lb_vrrp_virtual_router_id: "{{ keepalived_router_id_api if inventory_hostname in groups['lb_api'] else keepalived_router_id_ingress }}"
+
+lb_vrrp_role: "BACKUP"
+
+lb_vrrp_priority: >-
+  {{ keepalived_priority_master if inventory_hostname == (groups['lb_api'] if inventory_hostname in groups['lb_api'] else groups['lb_ingress'])[0] else keepalived_priority_backup }}

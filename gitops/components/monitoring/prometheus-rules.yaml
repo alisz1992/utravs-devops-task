@@ -1,0 +1,97 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: utravs-platform-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: kafka.rules
+      interval: 30s
+      rules:
+        - alert: KafkaConsumerLagCritical
+          expr: max by (consumergroup, topic) (kafka_consumergroup_lag) > 10000
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kafka consumer lag is critically high"
+            description: "Consumer group {{ $labels.consumergroup }} is more than 10000 messages behind on topic {{ $labels.topic }}."
+            runbook_url: "docs/runbooks/high-consumer-lag.md"
+        - alert: KafkaBrokerDown
+          expr: kafka_brokers < 3
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kafka cluster has lost brokers"
+            description: "Only {{ $value }} of 3 expected brokers are reported by kafka-exporter."
+            runbook_url: "docs/runbooks/kafka-broker-loss.md"
+        - alert: KafkaExporterDown
+          expr: up{job="kafka-exporter"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "kafka-exporter is down (lag monitoring blind spot)"
+    - name: vault.rules
+      interval: 30s
+      rules:
+        - alert: VaultSealedCritical
+          expr: vault_core_unsealed == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "A Vault node is SEALED"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is sealed - services cannot read secrets."
+            runbook_url: "docs/runbooks/vault-sealed.md"
+        - alert: VaultDown
+          expr: up{job=~".*vault.*"} == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Vault endpoint is not scrapeable (availability issue)"
+    - name: mesh.rules
+      interval: 30s
+      rules:
+        - alert: IstioMeshHighErrorRate
+          expr: |
+            sum(rate(istio_requests_total{response_code=~"5.."}[5m]))
+            /
+            sum(rate(istio_requests_total[5m]))
+            > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Mesh 5xx error rate above 5%"
+            description: "More than 5% of requests inside the service mesh are failing."
+            runbook_url: "docs/runbooks/mesh-connectivity.md"
+        - alert: IstiodDown
+          expr: absent(istio_build)
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Istio control plane is not being scraped (mesh health unknown)"
+            runbook_url: "docs/runbooks/mesh-connectivity.md"
+        - alert: IstioPodWithoutSidecarTraffic
+          expr: sum(rate(istio_requests_total{source_workload!~".*-istio-proxy"}[5m])) == 0 and on() sum(rate(istio_requests_total[5m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Traffic observed without mesh identity - possible mTLS bypass"
+    - name: cluster.rules
+      interval: 30s
+      rules:
+        - alert: KubeApiServerHighErrorRate
+          expr: sum(rate(apiserver_request_total{code=~"5.."}[5m])) / sum(rate(apiserver_request_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "kube-apiserver 5xx rate above 5% (check VIP/HAProxy path)"

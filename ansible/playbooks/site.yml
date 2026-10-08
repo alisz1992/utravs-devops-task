@@ -1,0 +1,30 @@
+---
+- name: "[1/5] Base operating system configuration on all nodes"
+  hosts: all
+  roles:
+    - common
+  tags: [common]
+
+- name: "[2/5] Install and configure HAProxy + Keepalived on the 4 LB nodes"
+  hosts: lb_api:lb_ingress
+  roles:
+    - haproxy_keepalived
+  tags: [lb, haproxy, keepalived]
+
+- name: "[3/5] Install containerd and Kubernetes prerequisites"
+  hosts: control_plane:workers
+  roles:
+    - containerd
+  tags: [runtime, containerd]
+
+- name: "[4/5] Bootstrap the Control Plane with stacked etcd (kubeadm init + join)"
+  hosts: control_plane
+  roles:
+    - kubeadm_control_plane
+  tags: [k8s, control_plane, k8s_cp]
+
+- name: "[5/5] Join Workers + install CNI"
+  hosts: workers
+  roles:
+    - kubeadm_worker
+  tags: [k8s, workers, k8s_worker]

@@ -1,0 +1,20 @@
+---
+- name: reload haproxy
+  ansible.builtin.systemd:
+    name: haproxy
+    state: reloaded
+
+- name: restart haproxy
+  ansible.builtin.systemd:
+    name: haproxy
+    state: restarted
+
+- name: restart keepalived
+  ansible.builtin.systemd:
+    name: keepalived
+    state: restarted
+
+- name: reload sshd
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded

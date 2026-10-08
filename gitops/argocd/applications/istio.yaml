@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: utravs
+  sources:
+    - repoURL: https://istio-release.storage.googleapis.com/charts
+      chart: base
+      targetRevision: 1.24.2
+      helm:
+        skipCrds: false
+    - repoURL: https://istio-release.storage.googleapis.com/charts
+      chart: istiod
+      targetRevision: 1.24.2
+      helm:
+        values: |
+          meshConfig:
+            accessLogFile: /dev/stdout
+            accessLogEncoding: JSON
+            enableAutoMtls: true
+          pilot:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: istio-validator-istio-system
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+        - '.webhooks[]?.failurePolicy'
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      name: istiod-default-validator
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+        - '.webhooks[]?.failurePolicy'
+    - group: apps
+      kind: Deployment
+      name: istiod
+      namespace: istio-system
+      jqPathExpressions:
+        - '.spec.template.spec.containers[] | select(.name == "discovery") | .env[] | select(.name == "PLATFORM")'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ServerSideDiff=true
+      - RespectIgnoreDifferences=true

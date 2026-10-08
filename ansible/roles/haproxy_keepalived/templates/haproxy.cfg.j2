@@ -1,0 +1,61 @@
+global
+    log         /dev/log local0
+    log         /dev/log local1 notice
+    maxconn     4096
+    pidfile     /var/run/haproxy.pid
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/run/haproxy.sock mode 600 level admin
+
+defaults
+    log             global
+    mode            tcp
+    option          tcplog
+    option          dontlognull
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    retries         3
+
+{% if inventory_hostname in groups['lb_api'] %}
+frontend fe_kube_api
+    mode tcp
+    bind *:{{ api_vip_port }}
+    default_backend be_kube_api
+
+backend be_kube_api
+    mode tcp
+    balance roundrobin
+    option httpchk GET /healthz
+    default-server inter {{ api_check_interval }}s rise {{ api_check_rise }} fall {{ api_check_fall }}
+{% for h in groups['control_plane'] | sort %}
+    server {{ h }} {{ hostvars[h].ansible_host }}:{{ apiserver_port }} check check-ssl verify none
+{% endfor %}
+{% else %}
+frontend fe_ingress_http
+    mode tcp
+    bind *:{{ ingress_http_port }}
+    default_backend be_ingress_http
+
+frontend fe_ingress_https
+    mode tcp
+    bind *:{{ ingress_https_port }}
+    default_backend be_ingress_https
+
+backend be_ingress_http
+    mode tcp
+    balance roundrobin
+    default-server inter {{ ingress_check_interval }}s rise 2 fall 3
+{% for h in groups['workers'] | sort %}
+    server {{ h }}_http {{ hostvars[h].ansible_host }}:{{ ingress_backend_port_http }} check
+{% endfor %}
+
+backend be_ingress_https
+    mode tcp
+    balance roundrobin
+    default-server inter {{ ingress_check_interval }}s rise 2 fall 3
+{% for h in groups['workers'] | sort %}
+    server {{ h }}_https {{ hostvars[h].ansible_host }}:{{ ingress_backend_port_https }} check
+{% endfor %}
+{% endif %}

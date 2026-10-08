@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: unit5chd-wildcard
+  namespace: ingress-nginx
+spec:
+  secretName: unit5chd-wildcard-tls
+  dnsNames:
+    - unit5chd.qzz.io
+    - "*.unit5chd.qzz.io"
+  issuerRef:
+    name: letsencrypt-wildcard
+    kind: ClusterIssuer
+    group: cert-manager.io

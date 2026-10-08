@@ -1,0 +1,82 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: utravs
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    chart: vault
+    targetRevision: 0.28.1
+    helm:
+      values: |
+        global:
+          enabled: true
+        server:
+          replicaCount: 3
+          podAnnotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "9102"
+            prometheus.io/path: "/metrics"
+          ha:
+            enabled: true
+            raft:
+              enabled: true
+              setNodeId: true
+              config: |
+                ui = true
+                listener "tcp" {
+                  tls_disable = 1
+                  address = "[::]:8200"
+                  cluster_address = "[::]:8201"
+                }
+                storage "raft" {
+                  path = "/vault/data"
+                  retry_join {
+                    leader_api_addr = "http://vault-0.vault-internal:8200"
+                  }
+                  retry_join {
+                    leader_api_addr = "http://vault-1.vault-internal:8200"
+                  }
+                  retry_join {
+                    leader_api_addr = "http://vault-2.vault-internal:8200"
+                  }
+                }
+                telemetry {
+                  prometheus_listen_address = "0.0.0.0:9102"
+                }
+                service_registration "kubernetes" {}
+          dataStorage:
+            enabled: true
+            size: 2Gi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        ui:
+          enabled: true
+        injector:
+          enabled: true
+          annotations:
+            sidecar.istio.io/inject: "false"
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      name: vault-agent-injector-cfg
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

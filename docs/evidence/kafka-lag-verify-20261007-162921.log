@@ -1,0 +1,9 @@
+broker pod: utravs-kafka-dual-role-pool-0
+--- consumer groups:
+orders-consumers-prod
+--- describe orders-consumers-prod (CURRENT-OFFSET vs LOG-END-OFFSET vs LAG):
+
+GROUP                 TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                  HOST            CLIENT-ID
+orders-consumers-prod orders          0          -               0               -               rdkafka-b33b93b3-e45b-4e12-b2ec-d3989ed7c33d /127.0.0.6      rdkafka
+orders-consumers-prod orders          1          189583          189585          2               rdkafka-b33b93b3-e45b-4e12-b2ec-d3989ed7c33d /127.0.0.6      rdkafka
+orders-consumers-prod orders          2          379166          379171          5               rdkafka-fc231f0a-94e4-4534-b944-74e719e513b0 /127.0.0.6      rdkafka

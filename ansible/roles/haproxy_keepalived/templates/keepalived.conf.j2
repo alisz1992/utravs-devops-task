@@ -1,0 +1,43 @@
+global_defs {
+    router_id {{ inventory_hostname }}
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_haproxy {
+    script "/usr/local/bin/check_haproxy.sh"
+    interval 2
+    weight -30
+    fall 3
+    rise 2
+}
+
+vrrp_instance VI_{{ lb_vrrp_virtual_router_id }} {
+    state {{ lb_vrrp_role }}
+    interface {{ vrrp_interface }}
+    virtual_router_id {{ lb_vrrp_virtual_router_id }}
+    priority {{ lb_vrrp_priority }}
+    advert_int 1
+    nopreempt
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass_api if inventory_hostname in groups['lb_api'] else keepalived_auth_pass_ingress }}
+    }
+
+    virtual_ipaddress {
+        {{ api_vip if inventory_hostname in groups['lb_api'] else ingress_vip }}/32
+    }
+
+    unicast_src_ip {{ hostvars[inventory_hostname].ansible_host }}
+    unicast_peer {
+{% set pair = groups['lb_api'] if inventory_hostname in groups['lb_api'] else groups['lb_ingress'] %}
+{% for h in pair | sort if h != inventory_hostname %}
+        {{ hostvars[h].ansible_host }}
+{% endfor %}
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}

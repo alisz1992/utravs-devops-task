@@ -1,0 +1,51 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/alisz1992/consumer
+  tag: "1.0.3"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+service:
+  port: 8080
+
+kafka:
+  bootstrap: utravs-kafka-kafka-bootstrap.kafka:9092
+  topic: orders
+  consumerGroup: orders-consumers
+  autoOffsetReset: earliest
+
+otel:
+  endpoint: http://otel-collector.observability.svc.cluster.local:4317
+
+agentInject:
+  enabled: true
+  annotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/agent-init-first: "true"
+    vault.hashicorp.com/role: "consumer"
+    vault.hashicorp.com/agent-inject-secret-kafka-creds: "kv/data/consumer"
+    vault.hashicorp.com/agent-inject-template-kafka-creds: |
+      {{- with secret "kv/data/consumer" -}}
+      CONSUMER_TOKEN={{ .Data.data.token }}
+      {{- end }}
+
+ingress:
+  enabled: true
+  host: consumer.utravs.nip.io
+  path: /
+  tls: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 250m
+    memory: 192Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

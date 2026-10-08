@@ -1,0 +1,94 @@
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apps
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    istio-injection: enabled
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: allow-ingress-plaintext-jaeger
+  namespace: observability
+  annotations:
+    utravs.io/purpose: ingress-backend
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: allow-ingress-plaintext-producer
+  namespace: apps
+  annotations:
+    utravs.io/purpose: ingress-backend
+spec:
+  selector:
+    matchLabels:
+      app: producer
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: allow-ingress-plaintext-consumer
+  namespace: apps
+  annotations:
+    utravs.io/purpose: ingress-backend
+spec:
+  selector:
+    matchLabels:
+      app: consumer
+  mtls:
+    mode: PERMISSIVE
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: allow-ingress-plaintext-vault
+  namespace: vault
+  annotations:
+    utravs.io/purpose: ingress-backend
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      app.kubernetes.io/instance: vault
+      component: server
+  mtls:
+    mode: PERMISSIVE

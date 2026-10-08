@@ -1,0 +1,44 @@
+---
+common_packages:
+  - curl
+  - wget
+  - gnupg2
+  - lsb-release
+  - apt-transport-https
+  - ca-certificates
+  - software-properties-common
+  - vim
+  - htop
+  - jq
+  - net-tools
+  - iproute2
+  - chrony
+  - unzip
+  - tar
+  - socat
+  - conntrack
+  - ipset
+
+common_kernel_modules:
+  - overlay
+  - br_netfilter
+
+common_sysctl:
+  net.bridge.bridge-nf-call-iptables: 1
+  net.bridge.bridge-nf-call-ip6tables: 1
+  net.ipv4.ip_forward: 1
+  net.ipv4.conf.all.rp_filter: 2
+  net.ipv4.conf.default.rp_filter: 2
+  fs.inotify.max_user_instances: 8192
+  fs.inotify.max_user_watches: 524288
+  vm.max_map_count: 524288
+  kernel.pid_max: 4194304
+
+common_open_tcp_ports:
+  - 22
+  - 6443
+  - 2379
+  - 2380
+  - 10250
+  - 80
+  - 443

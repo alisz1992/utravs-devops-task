@@ -1,0 +1,5 @@
+---
+kubeadm_config_path: /etc/kubernetes/kubeadm-init.yaml
+kubeconfig_admin: /etc/kubernetes/admin.conf
+helm_script: /tmp/get-helm-3.sh
+cilium_chart_repo: https://helm.cilium.io/

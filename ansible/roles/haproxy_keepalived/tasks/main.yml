@@ -1,0 +1,90 @@
+---
+
+- name: Install HAProxy and Keepalived
+  ansible.builtin.apt:
+    name: "{{ lb_haproxy_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Allow binding to a not-yet-owned VIP address
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-lb-vip.conf
+    reload: true
+    state: present
+
+- name: Pin sshd to the node's real IP (port 22 is shared with the VIP)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?\s*ListenAddress'
+    line: "ListenAddress {{ hostvars[inventory_hostname].ansible_host }}"
+  notify: reload sshd
+
+- name: Reload sshd immediately (frees 0.0.0.0:22 for the VIP listener)
+  ansible.builtin.systemd:
+    name: ssh
+    state: reloaded
+
+- name: Deploy haproxy.cfg (pair-aware)
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: "0644"
+    validate: "/usr/sbin/haproxy -c -f %s"
+  notify: reload haproxy
+
+- name: Deploy Keepalived health-check script (haproxy process liveness)
+  ansible.builtin.copy:
+    dest: /usr/local/bin/check_haproxy.sh
+    mode: "0755"
+    src: check_haproxy.sh
+  notify: restart keepalived
+
+- name: Deploy keepalived.conf
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: "0600"
+    validate: "/usr/sbin/keepalived -t -f %s"
+  notify: restart keepalived
+
+- name: Enable HAProxy
+  ansible.builtin.systemd:
+    name: haproxy
+    state: started
+    enabled: true
+
+- name: Enable Keepalived
+  ansible.builtin.systemd:
+    name: keepalived
+    state: started
+    enabled: true
+
+- name: Check whether HAProxy is listening on its port
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -tlnp | grep haproxy | grep -q ":{{ api_vip_port if inventory_hostname in groups['lb_api'] else ingress_http_port }}" && echo LISTENING || echo MISSING
+  args:
+    executable: /bin/bash
+  register: _hap_listen
+  changed_when: false
+
+- name: Restart HAProxy when it is not listening (stale in-memory config)
+  ansible.builtin.systemd:
+    name: haproxy
+    state: restarted
+    enabled: true
+  when: _hap_listen.stdout == "MISSING"
+
+- name: Re-check the HAProxy listener after restart
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -tlnp | grep haproxy | grep -q ":{{ api_vip_port if inventory_hostname in groups['lb_api'] else ingress_http_port }}" && echo LISTENING || echo MISSING
+  args:
+    executable: /bin/bash
+  register: _hap_listen2
+  changed_when: false
+  failed_when: _hap_listen2.stdout != "LISTENING"
+  when: _hap_listen.stdout == "MISSING"

@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: utravs
+  namespace: argocd
+spec:
+  description: Utravs event-driven platform projects
+  sourceRepos:
+    - "*"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRole
+    - group: "rbac.authorization.k8s.io"
+      kind: ClusterRoleBinding
+    - group: "apiextensions.k8s.io"
+      kind: CustomResourceDefinition
+    - group: "networking.k8s.io"
+      kind: IngressClass
+    - group: "security.istio.io"
+      kind: PeerAuthentication
+    - group: "networking.istio.io"
+      kind: "*"
+    - group: "storage.k8s.io"
+      kind: StorageClass
+    - group: "admissionregistration.k8s.io"
+      kind: "*"
+    - group: "scheduling.k8s.io"
+      kind: PriorityClass
+    - group: "apiregistration.k8s.io"
+      kind: APIService
+    - group: "cert-manager.io"
+      kind: ClusterIssuer
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true

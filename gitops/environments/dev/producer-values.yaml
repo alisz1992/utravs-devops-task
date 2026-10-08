@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/alisz1992/producer
+  tag: "1.0.3"
+  pullPolicy: IfNotPresent
+
+load:
+  ratePerSecond: 2
+
+agentInject:
+  enabled: true
+  annotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/agent-init-first: "true"
+    vault.hashicorp.com/role: "producer-dev"
+    vault.hashicorp.com/agent-inject-secret-kafka-creds: "kv/data/producer-dev"
+    vault.hashicorp.com/agent-inject-template-kafka-creds: |
+      {{- with secret "kv/data/producer-dev" -}}
+      PRODUCER_TOKEN={{ .Data.data.token }}
+      {{- end }}
+
+ingress:
+  enabled: true
+  host: producer-dev.utravs.nip.io
+  path: /
+  tls: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 250m
+    memory: 192Mi

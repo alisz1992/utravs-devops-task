@@ -1,0 +1,29 @@
+producer pod=producer-5657464467-4kzv4 consumer pod=consumer-6bfc96f5d-442w7
+-- take 3 fresh trace_ids from PRODUCER log --
+== trace_id 51a46daeefe50a9edaf4397d72246974 ==
+  producer-log count: 2
+  consumer-log count: 2
+== trace_id 4499eae976bd1cfeec52c3ba2d457ff9 ==
+  producer-log count: 2
+  consumer-log count: 2
+== trace_id 4499eae976bd1cfeec52c3ba2d457ff9 ==
+  producer-log count: 2
+  consumer-log count: 2
+-- jaeger lookup for each --
+51a46daeefe50a9edaf4397d72246974 jaeger services:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+4499eae976bd1cfeec52c3ba2d457ff9 jaeger services:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+4499eae976bd1cfeec52c3ba2d457ff9 jaeger services:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+-- sample span detail of one combined trace --
+"traceID":"4499eae976bd1cfeec52c3ba2d457ff9"
+"traceID":"4499eae976bd1cfeec52c3ba2d457ff9"
+"spanID":"e0ba187123c744bd"
+"operationName":"produce-order"
+"traceID":"4499eae976bd1cfeec52c3ba2d457ff9"
+"spanID":"87df93e004505c33"
+"operationName":"consume-order"
+"traceID":"4499eae976bd1cfeec52c3ba2d457ff9"
+"spanID":"e0ba187123c744bd"
+"serviceName":"producer"
+"serviceName":"consumer"
+CROSSCHECK_DONE
+SCRIPT-END

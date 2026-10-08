@@ -1,0 +1,62 @@
+i=1 jaeger-ready=0
+i=2 jaeger-ready=1
+jaeger-9d67d49d6-gfgzg 2/2 Running 0
+otel-collector-86bcc47446-67s4t 2/2 Running 0
+-- port-forward jaeger-query --
+jaeger api http=200
+-- services known to jaeger --
+{"data":["consumer","jaeger-all-in-one","producer"],"total":3,"limit":0,"offset":0,"errors":null}
+-- producer traces: service breakdown --
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+11992fbeafaa46c5ae93c22fa19d5b71:       1 "serviceName":"producer" 
+11992fbeafaa46c5ae93c22fa19d5b71:       1 "serviceName":"producer" 
+e95b2c7323787581fa309d413bae0636:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+e95b2c7323787581fa309d413bae0636:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+e95b2c7323787581fa309d413bae0636:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+e95b2c7323787581fa309d413bae0636:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+0dbc4981e320310ad04acecc7d3e0008:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+-- consumer traces: service breakdown --
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75b7bf01a13cee8deef7f36830e14a23:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+08e47c2383415863d95674bcf385590e:       1 "serviceName":"consumer" 
+08e47c2383415863d95674bcf385590e:       1 "serviceName":"consumer" 
+08e47c2383415863d95674bcf385590e:       1 "serviceName":"consumer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+75dd980a4e615d77505ac00cdadf2eef:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+ff2c2ee25c6a5dbc7ff6268f0b4e360a:       1 "serviceName":"consumer" 
+ff2c2ee25c6a5dbc7ff6268f0b4e360a:       1 "serviceName":"consumer" 
+ff2c2ee25c6a5dbc7ff6268f0b4e360a:       1 "serviceName":"consumer" 
+e95b2c7323787581fa309d413bae0636:       1 "serviceName":"consumer"       1 "serviceName":"producer" 
+-- combined trace search (producer+consumer in ONE trace) --
+COMBINED 75b7bf01a13cee8deef7f36830e14a23 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75b7bf01a13cee8deef7f36830e14a23 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75b7bf01a13cee8deef7f36830e14a23 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75b7bf01a13cee8deef7f36830e14a23 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75dd980a4e615d77505ac00cdadf2eef -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75dd980a4e615d77505ac00cdadf2eef -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75dd980a4e615d77505ac00cdadf2eef -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 75dd980a4e615d77505ac00cdadf2eef -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 11992fbeafaa46c5ae93c22fa19d5b71 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 11992fbeafaa46c5ae93c22fa19d5b71 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED e95b2c7323787581fa309d413bae0636 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED e95b2c7323787581fa309d413bae0636 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED e95b2c7323787581fa309d413bae0636 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED e95b2c7323787581fa309d413bae0636 -> "serviceName":"consumer","serviceName":"producer",
+COMBINED 0dbc4981e320310ad04acecc7d3e0008 -> "serviceName":"consumer","serviceName":"producer",
+-- app log cross-check --
+sample consumer trace=193f86de4d5cb6905b2d12bf0f2681aa
+in producer log: 0
+in consumer log: 2
+FINAL3_DONE
+SCRIPT-END

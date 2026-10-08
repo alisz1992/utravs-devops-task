@@ -1,0 +1,6 @@
+apiVersion: v2
+name: consumer
+description: Sample event consumer for the Utravs event-driven platform (Kafka + OpenTelemetry + Vault)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
